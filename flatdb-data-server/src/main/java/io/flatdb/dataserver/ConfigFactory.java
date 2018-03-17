@@ -23,6 +23,8 @@ public class ConfigFactory {
             throw new RuntimeException("Can't load class "+ className, e);
         }
 
+        int threads = Integer.parseInt(properties.getProperty("dbThreads", "1"));
+
         String dbName = properties.getProperty("name", "default");
         String partitions = properties.getProperty("partitions", "");
         String[] array = partitions.split(",");
@@ -36,7 +38,7 @@ public class ConfigFactory {
 
         return new Config() {
             @Override
-            public Class<DB> dbClass() {
+            public Class<? extends DB> dbClass() {
                 return dbClass;
             }
 
@@ -48,6 +50,11 @@ public class ConfigFactory {
             @Override
             public Iterable<Integer> partitions() {
                 return partitionsSet;
+            }
+
+            @Override
+            public int dbThreads() {
+                return threads;
             }
 
             @Override
