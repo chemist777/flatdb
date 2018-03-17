@@ -1,5 +1,8 @@
 package io.flatdb.dataserver;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -12,6 +15,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 public class DataServer {
+    private static final Logger log = LoggerFactory.getLogger(DataServer.class);
     private static final Path configPath = Paths.get("server.conf");
 
     private final Config config;
@@ -107,7 +111,14 @@ public class DataServer {
      * @param args
      */
     public static void main(String[] args) {
-        DataServer server = new DataServer();
-        server.start().join();
+        DataServer server = null;
+        try {
+            server = new DataServer();
+            server.start().join();
+        } catch (Exception e) {
+            log.error("Can't start server", e);
+            if (server != null) server.stop().join();
+            System.exit(-1);
+        }
     }
 }
