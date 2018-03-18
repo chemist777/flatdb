@@ -1,5 +1,6 @@
 package io.flatdb.dataserver;
 
+import io.flatdb.dataserver.net.NioThread;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,6 +16,7 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 public class DataServer {
@@ -27,6 +29,8 @@ public class DataServer {
     //instance of DB for each partition
     private final Map<Integer, DBContext> dbInstances = new HashMap<>();
 
+    private final NioThread nioThread = new NioThread(this);
+
     public DataServer() {
         this(loadConfig());
     }
@@ -35,7 +39,8 @@ public class DataServer {
         this.config = config;
         this.dbExecutors = new ExecutorService[config.dbThreads()];
         for(int i=0, size=dbExecutors.length; i<size; i++) {
-            dbExecutors[i] = Executors.newSingleThreadExecutor();
+            int finalNum = i;
+            dbExecutors[i] = Executors.newSingleThreadExecutor(r -> new Thread(r, "db-" + finalNum));
         }
         int executorIndex = 0;
         for (int partition : this.config.partitions()) {
@@ -80,7 +85,7 @@ public class DataServer {
             future = rewordError(future, () -> "Can't start DB for partition " + partition);
             futures[i++] = future;
         }
-        return CompletableFuture.allOf(futures);
+        return CompletableFuture.allOf(futures).thenRun(nioThread::start);
     }
 
     public CompletableFuture<Void> stop() {
@@ -106,8 +111,9 @@ public class DataServer {
             futures[i++] = future;
         }
         return CompletableFuture.allOf(futures).whenComplete((v, e) -> {
+            nioThread.interrupt();
             for (ExecutorService dbExecutor : dbExecutors) {
-                dbExecutor.shutdown();
+                dbExecutor.shutdownNow();
             }
         });
     }
@@ -124,16 +130,23 @@ public class DataServer {
         });
     }
 
-    CompletableFuture<ByteBuffer> readOperation(int partition, ByteBuffer request) {
-        DBContext context = dbInstances.get(partition);
-        return CompletableFuture.supplyAsync(() -> context.db.readOperation(request), context.executor)
-                .thenCompose(f -> f);
+    public CompletableFuture<ByteBuffer> readOperation(int partition, ByteBuffer request) {
+        return execute(partition, request, ((dbContext, buffer) -> dbContext.db.readOperation(buffer)));
     }
 
-    CompletableFuture<Void> writeOperation(int partition, ByteBuffer request) {
+    public CompletableFuture<Void> writeOperation(int partition, ByteBuffer request) {
+        return execute(partition, request, ((dbContext, buffer) -> dbContext.db.writeOperation(buffer)));
+    }
+
+    //todo should we use ByteBuffer[] instead of ByteBuffer
+    private <T> CompletableFuture<T> execute(int partition, ByteBuffer request, BiFunction<DBContext, ByteBuffer, CompletableFuture<T>> operation) {
         DBContext context = dbInstances.get(partition);
-        return CompletableFuture.supplyAsync(() -> context.db.writeOperation(request), context.executor)
-                .thenCompose(f -> f);
+        return CompletableFuture.supplyAsync(() -> {
+            ByteBuffer heapRequest = ByteBuffer.allocate(request.limit());
+            heapRequest.put(request);
+            nioThread.execute(() -> nioThread.directBufferPool.release(request));
+            return operation.apply(context, heapRequest);
+        }, context.executor).thenCompose(f -> f);
     }
 
     /**

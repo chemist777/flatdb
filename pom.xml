@@ -10,8 +10,8 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>log-server</module>
-        <module>data-server</module>
-        <module>client</module>
+        <module>flatdb-log-server</module>
+        <module>flatdb-data-server</module>
+        <module>flatdb-client</module>
     </modules>
 </project>
