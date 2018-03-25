@@ -132,6 +132,7 @@ public class NioThread extends Thread {
         }
 
         if (pendingReadState == null) {
+            //whole request is in single buffer
             buffer.flip();
             if (buffer.remaining() >= Integer.BYTES) {
                 //we can read size
