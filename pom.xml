@@ -13,5 +13,6 @@
         <module>flatdb-log-server</module>
         <module>flatdb-data-server</module>
         <module>flatdb-client</module>
+        <module>flatdb-server-common</module>
     </modules>
 </project>
