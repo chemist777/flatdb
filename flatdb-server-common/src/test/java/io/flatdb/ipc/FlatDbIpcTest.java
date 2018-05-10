@@ -36,7 +36,7 @@ public class FlatDbIpcTest {
                     } finally {
                         ipc.close();
                     }
-                } catch (Exception e) {
+                } catch (Throwable e) {
                     e.printStackTrace();
                     fail();
                 }
@@ -58,7 +58,7 @@ public class FlatDbIpcTest {
                     } finally {
                         ipc.close();
                     }
-                } catch (Exception e) {
+                } catch (Throwable e) {
                     e.printStackTrace();
                     fail();
                 }
