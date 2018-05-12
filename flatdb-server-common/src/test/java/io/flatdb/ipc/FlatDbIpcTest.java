@@ -5,24 +5,23 @@ import org.junit.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 
 public class FlatDbIpcTest {
     @Test
     public void test() throws IOException {
-        Path path = Paths.get(System.getProperty("java.io.tmpdir")).resolve("flatDbTestPipe");
-
         ExecutorService executor1 = Executors.newSingleThreadExecutor();
         ExecutorService executor2 = Executors.newSingleThreadExecutor();
         try {
             Future<?> future1 = executor1.submit(() -> {
                 try {
-                    FlatDbIpc ipc = new FlatDbIpc(path);
+                    FlatDbIpc ipc = new FlatDbIpc(true);
                     try {
                         ByteBuffer buf = ByteBuffer.allocate(10);
                         ipc.receive(buf);
@@ -35,6 +34,8 @@ public class FlatDbIpcTest {
                         ipc.send(buf);
                     } finally {
                         ipc.close();
+                        Files.deleteIfExists(ipc.serverPipePath);
+                        Files.deleteIfExists(ipc.clientPipePath);
                     }
                 } catch (Throwable e) {
                     e.printStackTrace();
@@ -44,7 +45,7 @@ public class FlatDbIpcTest {
 
             Future<?> future2 = executor2.submit(() -> {
                 try {
-                    FlatDbIpc ipc = new FlatDbIpc(path);
+                    FlatDbIpc ipc = new FlatDbIpc(false);
                     try {
                         ByteBuffer buffer = ByteBuffer.allocate(10);
                         buffer.putInt(1);
@@ -57,6 +58,8 @@ public class FlatDbIpcTest {
                         assertThat(buffer.getInt(), is(2));
                     } finally {
                         ipc.close();
+                        Files.deleteIfExists(ipc.serverPipePath);
+                        Files.deleteIfExists(ipc.clientPipePath);
                     }
                 } catch (Throwable e) {
                     e.printStackTrace();
@@ -74,7 +77,6 @@ public class FlatDbIpcTest {
         } finally {
             executor1.shutdown();
             executor2.shutdown();
-            Files.delete(path);
         }
     }
 }
