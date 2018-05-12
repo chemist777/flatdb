@@ -21,7 +21,7 @@ public class FlatDbIpcTest {
         try {
             Future<?> future1 = executor1.submit(() -> {
                 try {
-                    FlatDbIpc ipc = new FlatDbIpc(true);
+                    FlatDbIpc ipc = new FlatDbIpc("test-", true);
                     try {
                         ByteBuffer buf = ByteBuffer.allocate(10);
                         ipc.receive(buf);
@@ -45,7 +45,7 @@ public class FlatDbIpcTest {
 
             Future<?> future2 = executor2.submit(() -> {
                 try {
-                    FlatDbIpc ipc = new FlatDbIpc(false);
+                    FlatDbIpc ipc = new FlatDbIpc("test-", false);
                     try {
                         ByteBuffer buffer = ByteBuffer.allocate(10);
                         buffer.putInt(1);

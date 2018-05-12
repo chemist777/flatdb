@@ -13,21 +13,21 @@ public class FlatDbIpc {
     public final Path serverPipePath, clientPipePath;
     private boolean serverMode;
 
-    public FlatDbIpc(boolean serverMode) {
+    public FlatDbIpc(String fileNamePrefix, boolean serverMode) {
         this.serverMode = serverMode;
         try {
-            this.serverPipePath = makePipe(true);
+            this.serverPipePath = makePipe(fileNamePrefix, true);
             this.serverChannel = FileChannel.open(serverPipePath, serverMode ? StandardOpenOption.READ : StandardOpenOption.WRITE);
 
-            this.clientPipePath = makePipe(false);
+            this.clientPipePath = makePipe(fileNamePrefix, false);
             this.clientChannel = FileChannel.open(clientPipePath, serverMode ? StandardOpenOption.WRITE : StandardOpenOption.READ);
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException("Can't open pipe", e);
         }
     }
 
-    private Path makePipe(boolean server) throws IOException, InterruptedException {
-        Path pipePath = Paths.get(System.getProperty("java.io.tmpdir")).resolve("flatdb-" + (server?"server":"client") + ".pipe");
+    private Path makePipe(String fileNamePrefix, boolean server) throws IOException, InterruptedException {
+        Path pipePath = Paths.get(System.getProperty("java.io.tmpdir")).resolve(fileNamePrefix + (server?"server":"client") + ".pipe");
         if (!Files.exists(pipePath)) {
             Process process = new ProcessBuilder("mkfifo", pipePath.toAbsolutePath().toString())
                     .redirectOutput(ProcessBuilder.Redirect.INHERIT)
