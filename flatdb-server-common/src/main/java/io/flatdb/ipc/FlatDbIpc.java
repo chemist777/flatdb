@@ -35,17 +35,20 @@ public class FlatDbIpc {
             Process process = new ProcessBuilder("mkfifo", pipePath.toAbsolutePath().toString())
                     .redirectErrorStream(true)
                     .start();
-            int exitCode = process.waitFor();
-            //we should check for existence again because file can be created concurrently
-            if (exitCode != 0 && !Files.exists(pipePath)) {
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                try (InputStream is = process.getInputStream()) {
-                    byte[] buf = new byte[512];
-                    int len;
-                    while ((len = is.read(buf)) > 0) {
-                        baos.write(buf, 0, len);
-                    }
+
+            //read process output fully into byte array
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            try (InputStream is = process.getInputStream()) {
+                byte[] buf = new byte[512];
+                int len;
+                while ((len = is.read(buf)) > 0) {
+                    baos.write(buf, 0, len);
                 }
+            }
+
+            int exitCode = process.waitFor();
+            //we should check for file existence again because it can be created concurrently
+            if (exitCode != 0 && !Files.exists(pipePath)) {
                 throw new RuntimeException("Can't mkfifo: " + new String(baos.toByteArray(), StandardCharsets.UTF_8));
             }
         }
