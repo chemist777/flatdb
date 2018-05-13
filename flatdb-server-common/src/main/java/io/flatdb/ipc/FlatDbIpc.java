@@ -11,16 +11,18 @@ import java.nio.file.StandardOpenOption;
 public class FlatDbIpc {
     private final FileChannel serverChannel, clientChannel;
     public final Path serverPipePath, clientPipePath;
-    private boolean serverMode;
+    private final ByteBufferConsumer receiveMethod, sendMethod;
 
     public FlatDbIpc(String fileNamePrefix, boolean serverMode) {
-        this.serverMode = serverMode;
         try {
             this.serverPipePath = makePipe(fileNamePrefix, true);
             this.serverChannel = FileChannel.open(serverPipePath, serverMode ? StandardOpenOption.READ : StandardOpenOption.WRITE);
 
             this.clientPipePath = makePipe(fileNamePrefix, false);
             this.clientChannel = FileChannel.open(clientPipePath, serverMode ? StandardOpenOption.WRITE : StandardOpenOption.READ);
+
+            receiveMethod = serverMode ? serverChannel::read : clientChannel::read;
+            sendMethod = serverMode ? clientChannel::write : serverChannel::write;
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException("Can't open pipe", e);
         }
@@ -44,7 +46,7 @@ public class FlatDbIpc {
 
     public void receive(ByteBuffer buffer) {
         try {
-            (serverMode ? serverChannel : clientChannel).read(buffer);
+            receiveMethod.accept(buffer);
         } catch (IOException e) {
             throw new RuntimeException("Can't read from pipe", e);
         }
@@ -52,7 +54,7 @@ public class FlatDbIpc {
 
     public void send(ByteBuffer buffer) {
         try {
-            (serverMode ? clientChannel : serverChannel).write(buffer);
+            sendMethod.accept(buffer);
         } catch (IOException e) {
             throw new RuntimeException("Can't write to pipe", e);
         }
@@ -69,5 +71,9 @@ public class FlatDbIpc {
         } catch (IOException e) {
             throw new RuntimeException("Can't close pipe", e);
         }
+    }
+
+    private interface ByteBufferConsumer {
+        void accept(ByteBuffer buffer) throws IOException;
     }
 }
