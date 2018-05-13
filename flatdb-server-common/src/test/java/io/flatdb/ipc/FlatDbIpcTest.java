@@ -5,6 +5,8 @@ import org.junit.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -16,12 +18,14 @@ import static org.junit.Assert.fail;
 public class FlatDbIpcTest {
     @Test
     public void test() throws IOException {
+        Path tmpPath = Paths.get(System.getProperty("java.io.tmpdir"));
+
         ExecutorService executor1 = Executors.newSingleThreadExecutor();
         ExecutorService executor2 = Executors.newSingleThreadExecutor();
         try {
             Future<?> future1 = executor1.submit(() -> {
                 try {
-                    FlatDbIpc ipc = new FlatDbIpc("test-", true);
+                    FlatDbIpc ipc = new FlatDbIpc(tmpPath, "test-", true);
                     try {
                         ByteBuffer buf = ByteBuffer.allocate(10);
                         ipc.receive(buf);
@@ -45,7 +49,7 @@ public class FlatDbIpcTest {
 
             Future<?> future2 = executor2.submit(() -> {
                 try {
-                    FlatDbIpc ipc = new FlatDbIpc("test-", false);
+                    FlatDbIpc ipc = new FlatDbIpc(tmpPath, "test-", false);
                     try {
                         ByteBuffer buffer = ByteBuffer.allocate(10);
                         buffer.putInt(1);

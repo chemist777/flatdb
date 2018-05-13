@@ -8,7 +8,6 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
 public class FlatDbIpc {
@@ -16,14 +15,12 @@ public class FlatDbIpc {
     private final FileChannel serverChannel, clientChannel;
     private final ByteBufferConsumer receiveMethod, sendMethod;
 
-    public FlatDbIpc(String fileNamePrefix, boolean serverMode) {
+    public FlatDbIpc(Path folderPath, String fileNamePrefix, boolean serverMode) {
         try {
-            Path tmpPath = Paths.get(System.getProperty("java.io.tmpdir"));
-
-            this.serverPipePath = makePipe(tmpPath.resolve(fileNamePrefix + "server.pipe"));
+            this.serverPipePath = makePipe(folderPath.resolve(fileNamePrefix + "server.pipe"));
             this.serverChannel = FileChannel.open(serverPipePath, serverMode ? StandardOpenOption.READ : StandardOpenOption.WRITE);
 
-            this.clientPipePath = makePipe(tmpPath.resolve(fileNamePrefix + "client.pipe"));
+            this.clientPipePath = makePipe(folderPath.resolve(fileNamePrefix + "client.pipe"));
             this.clientChannel = FileChannel.open(clientPipePath, serverMode ? StandardOpenOption.WRITE : StandardOpenOption.READ);
 
             receiveMethod = serverMode ? serverChannel::read : clientChannel::read;
